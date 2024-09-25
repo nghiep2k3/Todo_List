@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List</title>
+    <style>
+        /* Basic styles for layout */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #4CAF50;
+        }
+
+        #new-todo {
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #todo-container {
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+            margin-top: 20px;
+        }
+
+        .todo-column {
+            width: 45%;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+        }
+
+        .todo-column h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        li:last-child {
+            border-bottom: none;
+        }
+
+        .completed {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+    </style>
+    <script>
+        async function getTodos() {
+            const response = await fetch('http://localhost:8081/cloud_computing/api/getTodos.php');
+            const todos = await response.json();
+            const todoList = document.getElementById('todo-list');
+            const completedList = document.getElementById('completed-list');
+            todoList.innerHTML = '';
+            completedList.innerHTML = '';
+
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.textContent = todo.title;
+
+                // Thêm lớp để hiển thị việc đã hoàn thành
+                if (todo.completed) {
+                    li.classList.add('completed');
+                }
+
+                // Tạo nút Done
+                const doneButton = document.createElement('button');
+                doneButton.textContent = 'Done';
+                doneButton.onclick = async () => {
+                    await updateTodo(todo.id, 1); // Đánh dấu là hoàn thành
+                    getTodos(); // Cập nhật lại danh sách
+                };
+                li.appendChild(doneButton);
+
+                // Tạo nút Edit
+                const editButton = document.createElement('button');
+                editButton.style.background = "orange"
+                editButton.textContent = 'Edit';
+                editButton.onclick = () => {
+                    const newTitle = prompt("Edit todo:", todo.title);
+                    if (newTitle) {
+                        editTodo(todo.id, newTitle); // Chỉnh sửa todo
+                    }
+                };
+                li.appendChild(editButton);
+
+                // Tạo nút Remove
+                const removeButton = document.createElement('button');
+                removeButton.style.background = "red"
+                removeButton.textContent = 'Remove';
+                removeButton.onclick = async () => {
+                    await removeTodo(todo.id); // Xóa todo
+                    getTodos(); // Cập nhật lại danh sách
+                };
+                li.appendChild(removeButton);
+
+                // Phân loại todo
+                if (todo.completed) {
+                    completedList.appendChild(li); // Thêm vào danh sách đã hoàn thành
+                } else {
+                    todoList.appendChild(li); // Thêm vào danh sách việc cần làm
+                }
+            });
+        }
+
+        async function addTodo() {
+            const title = document.getElementById('new-todo').value;
+            if (title.trim() === "") {
+                alert("Please enter a todo item.");
+                return;
+            }
+            await fetch('http://localhost:8081/cloud_computing/api/createTodo.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title })
+            });
+            document.getElementById('new-todo').value = '';
+            getTodos(); // Gọi lại danh sách todos
+        }
+
+        async function updateTodo(id, completed) {
+            await fetch('http://localhost:8081/cloud_computing/api/updateTodo.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, completed })
+            });
+        }
+
+        async function editTodo(id, newTitle) {
+            console.log(id, newTitle);
+            
+            await fetch('http://localhost:8081/cloud_computing/api/updateTodo.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, title: newTitle })
+            });
+            getTodos();
+        }
+
+        async function removeTodo(id) {
+            await fetch('http://localhost:8081/cloud_computing/api/deleteTodo.php', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', getTodos);
+    </script>
+</head>
+<body>
+    <h1>Todo List</h1>
+    <input type="text" id="new-todo" placeholder="New Todo">
+    <button onclick="addTodo()">Add Todo</button>
+
+    <div id="todo-container">
+        <div class="todo-column">
+            <h2>Danh sách việc cần làm</h2>
+            <ul id="todo-list"></ul>
+        </div>
+        <div class="todo-column">
+            <h2>Danh sách việc đã hoàn thành</h2>
+            <ul id="completed-list"></ul>
+        </div>
+    </div>
+</body>
+</html>
